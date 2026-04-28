@@ -265,137 +265,173 @@
 </div>
 
 <script>
-  // ── State
-  let allPosts      = [];
-  let filteredPosts = [];
-  let currentTag    = "all";
-  const PAGE_SIZE   = 9;
-  let currentPage   = 1;
+  var allPosts      = [];
+  var filteredPosts = [];
+  var currentPage   = 1;
+  var PAGE_SIZE     = 9;
 
   // ── Boot
   fetch("data/index.json?v=" + Date.now())
-    .then(r => r.json())
-    .then(data => {
-      allPosts      = data.posts.reverse(); // newest first
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      allPosts      = (data.posts || []).slice();
       filteredPosts = allPosts;
       updateStats();
       renderPage(1);
     })
-    .catch(() => {
+    .catch(function(err) {
       document.getElementById("postsGrid").innerHTML =
         '<div class="state-msg">Could not load posts. Please refresh.</div>';
+      console.error("Index fetch error:", err);
     });
 
-  // ── Filter by tag / category
+  // ── Filter by tag/category
   function filterTag(tag, btn) {
-    currentTag = tag;
-    document.querySelectorAll(".tag-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tag-btn").forEach(function(b) {
+      b.classList.remove("active");
+    });
     btn.classList.add("active");
 
-    filteredPosts = tag === "all"
+    filteredPosts = (tag === "all")
       ? allPosts
-      : allPosts.filter(p =>
-          p.category === tag || p.tag === tag
-        );
+      : allPosts.filter(function(p) {
+          return p.category === tag || p.tag === tag;
+        });
 
     currentPage = 1;
     updateStats();
     renderPage(1);
   }
 
-  // ── Render one page of posts
- function renderPage(page) {
-    currentPage        = page;
-    const start        = (page - 1) * PAGE_SIZE;
-    const slice        = filteredPosts.slice(start, start + PAGE_SIZE);
-    const grid         = document.getElementById("postsGrid");
+  // ── Render one page of cards
+  function renderPage(page) {
+    currentPage  = page;
+    var start    = (page - 1) * PAGE_SIZE;
+    var slice    = filteredPosts.slice(start, start + PAGE_SIZE);
+    var grid     = document.getElementById("postsGrid");
 
     if (slice.length === 0) {
-      grid.innerHTML = '<div class="state-msg">No posts found in this category.</div>';
+      grid.innerHTML =
+        '<div class="state-msg">No posts found in this category.</div>';
       document.getElementById("pagination").innerHTML = "";
       return;
     }
 
-    grid.innerHTML = slice.map(post => `
-      <div class="post-card" onclick="openPost('${post.file}')">
-
-        ${post.image ? `
-        <div style="
-          margin: -28px -28px 20px -28px;
-          border-radius: 10px 10px 0 0;
-          overflow: hidden;
-          height: 180px;
-          background: var(--bg);
-          border-bottom: 1px solid var(--border);">
-          <img
-            src="${post.image}"
-            alt="${post.title}"
-            loading="lazy"
-            style="width:100%; height:100%; object-fit:cover; display:block;"
-            onerror="this.parentElement.style.display='none'">
-        </div>` : `
-        <div style="
-          margin: -28px -28px 20px -28px;
-          border-radius: 10px 10px 0 0;
-          height: 6px;
-          background: var(--accent);
-          opacity: 0.4;">
-        </div>`}
-
-        <div>
-          <div class="post-card-meta">
-            <span class="post-category">${post.category}</span>
-            <span class="post-date">${formatDate(post.date)}</span>
-          </div>
-          <span class="post-tag">${post.tag}</span>
-          <h3>${post.title}</h3>
-          <p>${post.excerpt}</p>
-        </div>
-
-        <span class="read-link">Read More →</span>
-      </div>
-    `).join("");
-
+    var html = "";
+    for (var i = 0; i < slice.length; i++) {
+      html += buildCard(slice[i]);
+    }
+    grid.innerHTML = html;
     renderPagination();
   }
+
+  // ── Build a single post card
+  function buildCard(post) {
+    var imageBlock = "";
+
+    if (post.image) {
+      imageBlock =
+        '<div style="' +
+          'margin:-28px -28px 20px -28px;' +
+          'border-radius:10px 10px 0 0;' +
+          'overflow:hidden;' +
+          'height:180px;' +
+          'background:var(--bg);' +
+          'border-bottom:1px solid var(--border);">' +
+        '<img' +
+          ' src="' + post.image + '"' +
+          ' alt="' + escapeHtml(post.title) + '"' +
+          ' loading="lazy"' +
+          ' style="width:100%;height:100%;object-fit:cover;display:block;"' +
+          ' onerror="this.parentElement.style.display=\'none\'">' +
+        '</div>';
+    } else {
+      imageBlock =
+        '<div style="' +
+          'margin:-28px -28px 20px -28px;' +
+          'border-radius:10px 10px 0 0;' +
+          'height:6px;' +
+          'background:var(--accent);' +
+          'opacity:0.4;">' +
+        '</div>';
+    }
+
+    var safeFile = encodeURIComponent(post.file || post.id + ".json");
+
+    return (
+      '<div class="post-card" onclick="openPost(\'' + safeFile + '\')">' +
+        imageBlock +
+        '<div>' +
+          '<div class="post-card-meta">' +
+            '<span class="post-category">' + escapeHtml(post.category || "") + '</span>' +
+            '<span class="post-date">'     + formatDate(post.date)            + '</span>' +
+          '</div>' +
+          '<span class="post-tag">'    + escapeHtml(post.tag     || "") + '</span>' +
+          '<h3>'                       + escapeHtml(post.title   || "") + '</h3>' +
+          '<p>'                        + escapeHtml(post.excerpt || "") + '</p>' +
+        '</div>' +
+        '<span class="read-link">Read More &#8594;</span>' +
+      '</div>'
+    );
+  }
+
   // ── Pagination controls
   function renderPagination() {
-    const total     = Math.ceil(filteredPosts.length / PAGE_SIZE);
-    const container = document.getElementById("pagination");
+    var total     = Math.ceil(filteredPosts.length / PAGE_SIZE);
+    var container = document.getElementById("pagination");
     if (total <= 1) { container.innerHTML = ""; return; }
-
-    let html = "";
-    for (let i = 1; i <= total; i++) {
-      html += `<button class="page-btn ${i === currentPage ? 'active' : ''}"
-                 onclick="renderPage(${i})">${i}</button>`;
+    var html = "";
+    for (var i = 1; i <= total; i++) {
+      html +=
+        '<button class="page-btn ' + (i === currentPage ? "active" : "") + '"' +
+        ' onclick="renderPage(' + i + ')">' + i + '</button>';
     }
     container.innerHTML = html;
   }
 
-  // ── Stats bar update
+  // ── Stats bar
   function updateStats() {
+    var shown = Math.min(
+      PAGE_SIZE * currentPage,
+      filteredPosts.length
+    );
     document.getElementById("postCountShown").textContent =
       Math.min(PAGE_SIZE, filteredPosts.length);
     document.getElementById("postCountTotal").textContent =
       filteredPosts.length;
-
-    if (allPosts.length > 0) {
+    if (allPosts.length > 0 && allPosts[0].date) {
       document.getElementById("lastUpdated").textContent =
         formatDate(allPosts[0].date);
     }
   }
 
-  // ── Navigate to single post
+  // ── Navigate to single post reader
   function openPost(file) {
     window.location.href = "post.html?file=" + file;
   }
 
-  // ── Format date
+  // ── Format ISO date string
   function formatDate(dateStr) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("en-US", {
-      year: "numeric", month: "long", day: "numeric"
-    });
+    if (!dateStr) return "";
+    try {
+      var d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", {
+        year: "numeric", month: "long", day: "numeric"
+      });
+    } catch(e) {
+      return dateStr;
+    }
+  }
+
+  // ── Escape HTML to prevent XSS in card content
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g,  "&amp;")
+      .replace(/</g,  "&lt;")
+      .replace(/>/g,  "&gt;")
+      .replace(/"/g,  "&quot;")
+      .replace(/'/g,  "&#39;");
   }
 </script>
 
