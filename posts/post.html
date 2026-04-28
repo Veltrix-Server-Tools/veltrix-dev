@@ -177,122 +177,150 @@
 </div>
 
 <script>
-  // ── Read file param from URL
-  const params   = new URLSearchParams(window.location.search);
-  const postFile = params.get("file");
+  var params   = new URLSearchParams(window.location.search);
+  var postFile = params.get("file");
 
   if (!postFile) {
     document.getElementById("postHeader").innerHTML =
-      '<p>No post specified. <a href="index.html">Back to posts →</a></p>';
+      '<p>No post specified. <a href="index.html">Back to posts</a></p>';
   } else {
-    fetch("data/" + postFile + "?v=" + Date.now())
-      .then(r => r.json())
-      .then(post => {
+    var fetchFile = decodeURIComponent(postFile);
+    fetch("data/" + fetchFile + "?v=" + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(post) {
         renderPost(post);
         document.title = post.title + " — Veltrix";
       })
-      .catch(() => {
+      .catch(function() {
         document.getElementById("postHeader").innerHTML =
-          '<p>Post not found. <a href="index.html">Back to posts →</a></p>';
+          '<p>Post not found. <a href="index.html">Back to posts</a></p>';
       });
   }
 
-  // ── Render post header + body
   function renderPost(post) {
-    const formatDate = (d) => new Date(d).toLocaleDateString("en-US", {
-      year: "numeric", month: "long", day: "numeric"
-    });
+    // ── Header
+    document.getElementById("postHeader").innerHTML =
+      '<a class="back-link" href="index.html">&#8592; Back to Posts</a>' +
+      '<span class="badge">' + escapeHtml(post.category || "") + '</span>' +
+      '<h1>' + escapeHtml(post.title || "") + '</h1>' +
+      '<div class="post-byline">' +
+        'By ' + escapeHtml(post.author || "Veltrix") +
+        ' &nbsp;&middot;&nbsp; ' + formatDate(post.date) +
+        ' &nbsp;&middot;&nbsp; ' + escapeHtml(post.tag || "") +
+      '</div>';
 
-    // Header
-    document.getElementById("postHeader").innerHTML = `
-      <a class="back-link" href="index.html">← Back to Posts</a>
-      <span class="badge">${post.category}</span>
-      <h1>${post.title}</h1>
-      <div class="post-byline">
-        By ${post.author || 'Veltrix'} &nbsp;·&nbsp; ${formatDate(post.date)}
-        &nbsp;·&nbsp; ${post.tag}
-      </div>
-    `;
-// Add after document.getElementById("postHeader").innerHTML = `...`
-// Inside renderPost() in post.html
+    // ── Hero image (if present)
+    var body = document.getElementById("postBody");
+    body.innerHTML = "";
 
-// ── Render hero image if present
-if (post.image) {
-  const imageSection = document.createElement("div");
-  imageSection.style.cssText =
-    "margin: 0 0 40px 0; border-radius: 10px; overflow: hidden;" +
-    "border: 1px solid var(--border); max-height: 420px;";
+    if (post.image) {
+      var imgWrap = document.createElement("div");
+      imgWrap.style.cssText =
+        "margin:0 0 40px 0;border-radius:10px;overflow:hidden;" +
+        "border:1px solid var(--border);max-height:420px;";
 
-  if (post.image.startsWith("data:image/svg")) {
-    // SVG inline embed
-    imageSection.innerHTML =
-      '<img src="' + post.image + '" ' +
-      'style="width:100%; display:block;" ' +
-      'alt="' + post.title + '">';
-  } else {
-    // External URL
-    const img = document.createElement("img");
-    img.src   = post.image;
-    img.alt   = post.title;
-    img.style.cssText = "width:100%; display:block; object-fit:cover; max-height:420px;";
-    img.onerror = function() {
-      // Image failed to load — replace with SVG
-      imageSection.innerHTML =
-        '<div style="background:var(--card);padding:60px;text-align:center;">' +
-        '<p style="color:var(--accent);font-size:14px;">' +
-        post.category.toUpperCase() + '</p></div>';
-    };
-    imageSection.appendChild(img);
-  }
+      var img = document.createElement("img");
+      img.src   = post.image;
+      img.alt   = post.title || "";
+      img.style.cssText =
+        "width:100%;display:block;object-fit:cover;max-height:420px;";
+      img.onerror = function() {
+        imgWrap.style.display = "none";
+      };
+      imgWrap.appendChild(img);
+      body.appendChild(imgWrap);
+    }
 
-  document.getElementById("postBody").prepend(imageSection);
-}
-    // Body blocks
-    const body  = document.getElementById("postBody");
-    body.innerHTML = post.content.map(block => {
+    // ── Content blocks
+    var blocks = post.content || [];
+    for (var i = 0; i < blocks.length; i++) {
+      var block = blocks[i];
+      var el;
+
       if (block.type === "heading") {
-        return `<h2>${block.text}</h2>`;
-      }
-      if (block.type === "paragraph") {
-        return `<p>${block.text}</p>`;
-      }
-      if (block.type === "callout") {
-        return `<div class="post-callout">${block.text}</div>`;
-      }
-      if (block.type === "cta") {
-        return `
-          <div class="post-cta">
-            <p>${block.text}</p>
-            <a href="${block.url}" class="btn btn-primary">${block.label}</a>
-          </div>
-        `;
-      }
-      return "";
-    }).join("");
+        el = document.createElement("h2");
+        el.textContent = block.text || "";
 
-    // Related posts
+      } else if (block.type === "paragraph") {
+        el = document.createElement("p");
+        el.textContent = block.text || "";
+
+      } else if (block.type === "callout") {
+        el = document.createElement("div");
+        el.className   = "post-callout";
+        el.textContent = block.text || "";
+
+      } else if (block.type === "cta") {
+        el = document.createElement("div");
+        el.className = "post-cta";
+        var ctaText = document.createElement("p");
+        ctaText.textContent = block.text || "";
+        var ctaBtn  = document.createElement("a");
+        ctaBtn.href      = block.url   || "../premium.html";
+        ctaBtn.className = "btn btn-primary";
+        ctaBtn.textContent = block.label || "View Module";
+        el.appendChild(ctaText);
+        el.appendChild(ctaBtn);
+
+      } else {
+        continue;
+      }
+
+      body.appendChild(el);
+    }
+
+    // ── Related posts
     if (post.related && post.related.length > 0) {
       loadRelated(post.related);
     }
   }
 
-  // ── Load related post stubs
   function loadRelated(ids) {
     fetch("data/index.json?v=" + Date.now())
-      .then(r => r.json())
-      .then(data => {
-        const related = data.posts.filter(p => ids.includes(p.id));
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var posts = data.posts || [];
+        var related = posts.filter(function(p) {
+          return ids.indexOf(p.id) > -1;
+        });
         if (related.length === 0) return;
 
-        document.getElementById("relatedSection").style.display = "block";
-        document.getElementById("relatedGrid").innerHTML =
-          related.map(p => `
-            <div class="related-card"
-                 onclick="window.location.href='post.html?file=${p.file}'">
-              <h4>${p.title}</h4>
-            </div>
-          `).join("");
+        var section = document.getElementById("relatedSection");
+        var grid    = document.getElementById("relatedGrid");
+        section.style.display = "block";
+
+        var html = "";
+        for (var i = 0; i < related.length; i++) {
+          var p = related[i];
+          html +=
+            '<div class="related-card"' +
+            ' onclick="window.location.href=\'post.html?file=' +
+            encodeURIComponent(p.file || p.id + ".json") + '\'">' +
+            '<h4>' + escapeHtml(p.title) + '</h4>' +
+            '</div>';
+        }
+        grid.innerHTML = html;
+      })
+      .catch(function() {});
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return "";
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        year: "numeric", month: "long", day: "numeric"
       });
+    } catch(e) { return dateStr; }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g,  "&amp;")
+      .replace(/</g,  "&lt;")
+      .replace(/>/g,  "&gt;")
+      .replace(/"/g,  "&quot;")
+      .replace(/'/g,  "&#39;");
   }
 </script>
 
