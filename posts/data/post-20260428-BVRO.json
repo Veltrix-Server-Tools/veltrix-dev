@@ -1,0 +1,111 @@
+{
+  "id": "post-20260428-BVRO",
+  "title": "Anti Cheat: The Practical Operator Guide",
+  "date": "2026-04-28",
+  "category": "Protection",
+  "tag": "Guide",
+  "author": "Veltrix",
+  "excerpt": "The parameters that matter most, the mistakes that compound, and the implementation sequence that avoids both from a Veltrix operator perspective.",
+  "image": "https://pollinations.ai/p/fantasy%20game%20server%20protection%20shield%20magic%20barrier%20digital%20art%2C%20glowing%20land%20claim%20boundaries%2C%20dark%20forest%20background%2C%20cyan%20energy%20fields%2C%20professional%20concept%20art%2C%20ultra%20detailed%2C%20anti%20cheat%20the%20practical%2C%2016%3A9%20aspect%20ratio%2C%20no%20text%2C%20no%20watermark?width=1200&height=630&seed=61254&nologo=true&model=flux",
+  "imageSource": "pollinations-alt",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "After a server goes live, operators immediately discover that the default claim block accrual rates in claim-config.yml do not match the community's expectations, leading to rapid claim exhaustion and player frustration. This mismatch forces operators to dive into Veltrix's fairly verbose YAML documentation and run numerous experiments to fine‑tune the accrual values, which were designed primarily for test environments. Because the file hierarchy is heavily nested, even a minor misindentation can cause claim‑manager errors that only surface once players begin interacting with the world. The resulting slow resolution loop—searching forums, rebuilding dev environments, and testing patches—drives operators to seek out specific guidance on how to configure claim-config.yml correctly after deployment, rather than during initial setup."
+    },
+    {
+      "type": "heading",
+      "text": "What Operators Are Actually Searching For"
+    },
+    {
+      "type": "paragraph",
+      "text": "Moreover, related flags in grief-flags.yml can inadvertently expose cheaters, compelling operators to concurrently adjust threshold settings, which complicates the post‑deployment tuning cycle."
+    },
+    {
+      "type": "heading",
+      "text": "How the Protection System Actually Works Under Load"
+    },
+    {
+      "type": "paragraph",
+      "text": "Operators can fine‑tune cooldown_timer to match peak times, balancing detection accuracy without overwhelming the server’s CPU."
+    },
+    {
+      "type": "heading",
+      "text": "Trust Level Configuration: The Decisions That Matter Most"
+    },
+    {
+      "type": "paragraph",
+      "text": "The claim-config.yml parameters that Veltrix operators most consistently misconfigure are accrual-rate and max-blocks. Accrual rate is set in blocks per hour of active play. The Veltrix default ships at a value calibrated for development testing with few concurrent players. On a production server with dozens of active players, this rate saturates the available map area within the first two weeks — every buildable area becomes claimed and new players have nowhere to settle. Max-blocks sets the ceiling on how many claim blocks any single player can hold. Without a realistic ceiling, veteran players claim unreasonably large areas, compounding the map saturation problem and making the server feel finished rather than open."
+    },
+    {
+      "type": "callout",
+      "text": "The Veltrix trust system in trust-levels.yml is only as strong as its most permissive member tier. Review those permissions before an incident forces you to."
+    },
+    {
+      "type": "heading",
+      "text": "The Mistakes That Compound Over Time"
+    },
+    {
+      "type": "paragraph",
+      "text": "First, define core claim parameters in claim-config.yml, setting block_accrual_rate and max_claims. Second, specify the trust hierarchy in trust-levels.yml, assigning permissions and block limits to tiers such as 'standard', 'moderator', 'admin'. Third, calibrate grief-flags.yml thresholds, ensuring detection_timeframe and block_undo_window match server activity. Fourth, populate ban-template.yml to align moderation replies with enforcement policies. Fifth, finally, import those configurations into the Advanced Moderation Suite VX-MOD-01 and Anti-Cheat Integration VX-MOD-02 modules. Lastly, test each module with sample claims."
+    },
+    {
+      "type": "heading",
+      "text": "Implementation: The Correct Sequence"
+    },
+    {
+      "type": "paragraph",
+      "text": "Operators often unlock claim power for players before the server even stabilizes, setting the claim-interval to a trivial value in claim-config.yml and leaving block_accrual_rate unchecked. This allows players to amass claim blocks at an accelerated rate, flooding the world with noisy red lines and overwhelming the land‑ownership system. The second most common blunder is neglecting to populate trust-levels.yml for every needed role. If a “moderator” tier does not exist, the server defaults to the lowest tier, stripping legitimate moderators of essential permissions such as block edits or claim edits while allowing protesters to abuse trust‑based shortcuts. Third, grief‑flags.yml thresholds are frequently mis‑wired; when detection_timeframe is set too tight there are spikes of false positives, meaning normal building activity triggers grief alerts and players receive unnecessary rolls. A fourth trickle‑down mistake is not configuring ban‑template.yml to reflect the appropriate escalation paths. Lack of custom messages and missing ban‑expiration logic results in player confusion and a perception that the system is arbitrary. The net effect in each case is chaotic claim management, role ambiguity, and a tarnished reputation for the server’s moderation apparatus."
+    },
+    {
+      "type": "heading",
+      "text": "The Parameters That Actually Control Behavior"
+    },
+    {
+      "type": "paragraph",
+      "text": "Within Veltrix the most impactful anti‑cheat parameters live in grief‑flags.yml and trust‑levels.yml. At the very top is `cheatDetectionEnabled`, which must be set to true for any active audit. Directly following is `movementSpeedThreshold`; at 10–20 concurrent players a value of 4.2 ensures legitimate vortex movement is captured while still allowing thrill rides, but as player counts climb to 100+, raising it to 5.0 reduces false positives."
+    },
+    {
+      "type": "callout",
+      "text": "The next critical flag is `teleportJumpLimit`; keep it at 50 blocks for low counts, scale to 75 when you hit a hundred players to prevent teleport loopholes."
+    },
+    {
+      "type": "heading",
+      "text": "When Your Server Starts to Scale"
+    },
+    {
+      "type": "paragraph",
+      "text": "In trust‑levels.yml, the `maximumTrust` parameter controls air‑ban scopes—set it to 5 for small cohorts, bump it to 8 for larger servers so that high‑tier users still enjoy their privileges without opening up new vectors. Finally, the `griefBlockLimit` in grief‑flags.yml cap blocks per minute. Begin at 200 for less than 30 users, 350 for 30‑50, and 500 when your server hosts 100+ players."
+    },
+    {
+      "type": "heading",
+      "text": "Operator Checklist Before You Go Live"
+    },
+    {
+      "type": "paragraph",
+      "text": "Before launching a Hytale server with Veltrix, the operator should verify that claim-config.yml contains sensible block accrual rates for each claim tier; that the rates are below the maximum threshold defined in Veltrix’s data model and that the file references the correct world dimensions. The trust-levels.yml must be populated with at least three tiers, each granting progressive permissions, and each tier should include explicit flags for the Anti-Cheat Integration VX‑MOD‑02 to access trust tracking. Grief‑flags.yml must list every unchecked event and set percent thresholds for automatic revocation, ensuring each threshold value is a float between 0 and 1. The rollback-guide.md should be fully copied into the server’s docs folder, and every step be cross‑checked against the server’s rollback script; any placeholder tokens must be replaced with the server’s unique identifiers. The ban-template.yml must include a default reason entry and custom messages for common infractions, and the file must be syntactically valid YAML. Finally, the operator should confirm that VX‑MOD‑02 and VX‑MOD‑04 are listed in the server’s modules configuration and that the load order places Anti‑Cheat first so that the system can listen to raw player events immediately."
+    },
+    {
+      "type": "callout",
+      "text": "Before launching a Hytale server with Veltrix, the operator should verify that claim-config.yml contains sensible block accrual rates for each claim tier; rates must be below the maximum threshold defined by the Veltrix data model. The trust-levels.yml should list at least three tiers, each granting progressive permissions, and each tier must include flags allowing Anti-Cheat Integration VX‑MOD‑02 to track trust levels. Grief‑flags.yml must list all unapproved events and set percentage thresholds between 0 and 1 for automatic revocation. The rollback-guide.md should be fully copied into the server’s docs folder, with all placeholder tokens replaced by the server’s identifiers. The ban-template.yml must contain a default reason entry, custom messages for common infractions, and be valid YAML. Finally, the operator should ensure that VX‑MOD‑02 and VX‑MOD‑04 are listed in the server’s modules configuration, and that Anti‑Cheat loads first so it can capture raw player events immediately."
+    },
+    {
+      "type": "cta",
+      "text": "The Veltrix Anti-Cheat Integration Layer handles this layer of your infrastructure automatically. Pre-configured, documented, and ready to deploy on your server.",
+      "label": "Get Anti-Cheat Integration Layer — $24.99",
+      "url": "../premium.html"
+    }
+  ],
+  "related": [
+    "post-20260428-JIL7",
+    "post-20260428-Q5DC"
+  ],
+  "meta": {
+    "searchQuery": "hytale server anti cheat configuration",
+    "serpSource": "static-library",
+    "imageSource": "pollinations-alt",
+    "wordCount": 1100,
+    "peopleAlsoAsk": [],
+    "relatedSearches": []
+  }
+}
